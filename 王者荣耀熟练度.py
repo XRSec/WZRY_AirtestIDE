@@ -8,6 +8,7 @@ import traceback
 from multiprocessing import Process
 from airtest.core.api import *
 from airtest.core.settings import Settings as ST
+import atexit
 
 ST.OPDELAY = 1
 auto_setup(__file__)
@@ -72,14 +73,7 @@ def 异常处理():
     if 对战中():
         游戏结束()
     # 健康系统
-    if exists(Template(r"健康系统.png", record_pos=(0.119, -0.099), resolution=(2266, 1488))):
-        logger.warning("您已禁赛")
-        touch(Template(r"确定1.png", record_pos=(0.201, 0.079), resolution=(2266, 1488)))
-        stop_app(设备信息["王者应用ID"])
-        start_app(设备信息["王者应用ID"])
-        sleep(900)
-        启动王者荣耀()
-        return
+    健康系统()
     # 广告直播
     for i in range(5):
         if exists(Template(r"关闭广告.png", record_pos=(0.429, -0.205), resolution=(2266, 1488))):
@@ -91,31 +85,32 @@ def 异常处理():
     if exists(Template(r"点击屏幕继续.png", record_pos=(0.002, 0.287), resolution=(2266, 1488))):
         logger.warning("点击屏幕继续")
         touch(Template(r"点击屏幕继续.png", record_pos=(0.002, 0.287), resolution=(2266, 1488)))
-    # 健康系统
-    if exists(Template(r"健康系统1.png", record_pos=(-0.158, -0.028), resolution=(2266, 1488))):
-        touch(Template(r"确定2.png", record_pos=(0.098, 0.119), resolution=(2266, 1488)))
-        stop_app(设备信息["王者应用ID"])
-        start_app(设备信息["王者应用ID"])
-        sleep(900)
-        启动王者荣耀()
-        return
 
 
 def 邀请辅助():
     if 辅助:
         for i in range(10):
             logger.warning("第 %s 次 等待邀请通过" % (i + 1))
-            if exists(Template(r"微信邀请按钮.png", threshold=0.9, record_pos=(0.462, -0.195), resolution=(2266, 1488))):
-                logger.warning("对方未上线")
 
+            if exists(Template(r"邀请成功.png", record_pos=(-0.245, -0.072), resolution=(2266, 1488))):
+                logger.warning("邀请成功")
+                sleep(5)
+                return
             if exists(Template(r"邀请按钮.png", threshold=0.9, record_pos=(0.463, -0.195), resolution=(2266, 1488))):
                 logger.warning("邀请米莱狄")
                 touch(Template(r"邀请按钮.png", record_pos=(0.463, -0.195), resolution=(2266, 1488)))
+                continue
+
+            if exists(Template(r"微信邀请按钮.png", threshold=0.9, record_pos=(0.462, -0.195), resolution=(2266, 1488))):
+                logger.warning("对方未上线")
+
             if exists(Template(r"对方组队中.png", record_pos=(0.462, -0.195), resolution=(2266, 1488))):
                 touch(Template(r"对方组队中.png", record_pos=(0.462, -0.195), resolution=(2266, 1488)))
                 if wait(Template(r"邀请组队中的队友.png", record_pos=(0.348, -0.206), resolution=(2266, 1488))):
                     logger.warning("邀请组队中的队友")
                     touch(Template(r"组队中的队友邀请按钮.png", record_pos=(0.364, -0.221), resolution=(2266, 1488)))
+                    sleep(5)
+                    continue
 
             if exists(Template(r"已被健康系统禁止.png", record_pos=(-0.014, -0.025), resolution=(2266, 1488))):
                 logger.warning("对方已禁赛")
@@ -124,10 +119,6 @@ def 邀请辅助():
             if exists(Template(r"是否在微信邀请.png", record_pos=(-0.077, -0.015), resolution=(2266, 1488))):
                 logger.warning("对方未上线")
                 # touch(Template(r"取消按钮.png", record_pos=(-0.098, 0.117), resolution=(2266, 1488)))
-
-            if exists(Template(r"邀请成功.png", record_pos=(-0.245, -0.072), resolution=(2266, 1488))):
-                logger.warning("邀请成功")
-                return
             sleep(5)
 
 
@@ -175,12 +166,14 @@ def 启动游戏():
             touch(Template(r"星耀难度.png", record_pos=(-0.024, 0.116), resolution=(2266, 1488)))
 
         # 开始练习
-        btn_pos = Template(r"开始练习.png", record_pos=(0.324, 0.163), resolution=(2266, 1488))
+        btn_pos = Template(r"开始练习.png", threshold=0.95, record_pos=(0.324, 0.163), resolution=(2266, 1488))
         if exists(btn_pos):
             logger.warning("开始练习")
             touch(btn_pos)
+        sleep(2)
         if exists(btn_pos):
             logger.warning("次数用完")
+            os.kill(os.getpid(), signal.SIGINT)  # 退出程序
             if exists(Template(r"倔强青铜难度.png", record_pos=(-0.03, -0.149), resolution=(2266, 1488))):
                 logger.warning("选择 青铜难度")
                 touch(Template(r"倔强青铜难度.png", record_pos=(-0.03, -0.149), resolution=(2266, 1488)))
@@ -226,14 +219,14 @@ def 启动游戏():
 
         # 选择分路
         if exists(英雄属性["参战英雄线路"]):
-            logger.warning("选择 英雄线路 {}".format(英雄属性["参战英雄线路"].filename))
+            logger.warning("选择 英雄线路 {}".format(英雄属性["参战英雄线路"].filename.split(".")[0]))
             touch(英雄属性["参战英雄线路"])
         else:
             logger.error("未找到 英雄线路")
 
         # 选择英雄
         if exists(英雄属性["参战英雄"]):
-            logger.warning("选择 英雄 {}".format(英雄属性["参战英雄"].filename))
+            logger.warning("选择 英雄 {}".format(英雄属性["参战英雄"].filename.split(".")[0]))
             touch(英雄属性["参战英雄"])
             if exists(Template(r"分路重复.png", record_pos=(-0.001, -0.157), resolution=(2266, 1488))):
                 logger.warning("分路冲突，切换英雄")
@@ -242,11 +235,11 @@ def 启动游戏():
                     logger.warning("选择 英雄类型")
                     touch(Template(r"显示全部英雄.png", record_pos=(-0.291, -0.021), resolution=(2266, 1488)))
                 if exists(英雄属性["备战英雄线路"]):
-                    logger.warning("选择 备战英雄线路 {}".format(英雄属性["备战英雄线路"].filename))
+                    logger.warning("选择 备战英雄线路 {}".format(英雄属性["备战英雄线路"].filename.split(".")[0]))
                     touch(英雄属性["备战英雄线路"])
 
                 if exists(英雄属性["备战英雄"]):
-                    logger.warning("选择 备战英雄 {}".format(英雄属性["备战英雄"].filename))
+                    logger.warning("选择 备战英雄 {}".format(英雄属性["备战英雄"].filename.split(".")[0]))
                     touch(英雄属性["备战英雄"])
         else:
             logger.error("未找到 英雄")
@@ -255,21 +248,24 @@ def 启动游戏():
         游戏结束()
     else:
         # 等待邀请
-        if 对战中():
-            游戏结束()
+        异常处理()
         logger.warning("等待邀请")
-        for i in range(20):
-            logger.warning("第 %s 次 等待邀请" % (i + 1))
+        global nums
+        nums = 0
+
+        while True:
+            nums += 1
+            logger.warning("第 %s 次 等待邀请" % nums)
             if exists(Template(r"实战模拟邀请.png", record_pos=(-0.083, 0.018), resolution=(2266, 1488))):
                 logger.warning("接受邀请")
                 touch(Template(r"实战模拟邀请确认.png", record_pos=(0.158, 0.09), resolution=(2266, 1488)))
                 break
-            else:
-                if i == 20:
-                    logger.warning("没人邀请, 退出")
-                    stop_app(设备信息["王者应用ID"])
-                    process_list[1].terminate()
-            sleep(5)
+            健康系统()
+            if nums > 100:
+                logger.warning("没人邀请, 退出")
+                stop_app(设备信息["王者应用ID"])
+                process_list[1].terminate()
+
         # 选择路线
         if exists(Template(r"辅助英雄切换线路按钮.png", record_pos=(-0.255, -0.092), resolution=(2266, 1488))):
             touch(Template(r"辅助英雄切换线路按钮.png", record_pos=(-0.255, -0.092), resolution=(2266, 1488)))
@@ -298,14 +294,14 @@ def 启动游戏():
 
         # 选择英雄线路
         if exists(英雄属性["参战英雄线路"]):
-            logger.warning("选择 英雄线路 {}".format(英雄属性["参战英雄线路"].filename))
+            logger.warning("选择 英雄线路 {}".format(英雄属性["参战英雄线路"].filename.split(".")[0]))
             touch(英雄属性["参战英雄线路"])
         else:
             logger.error("未找到 英雄线路")
 
         # 选择英雄
         if exists(英雄属性["参战英雄"]):
-            logger.warning("选择 英雄 {}".format(英雄属性["参战英雄"].filename))
+            logger.warning("选择 英雄 {}".format(英雄属性["参战英雄"].filename.split(".")[0]))
             touch(英雄属性["参战英雄"])
             if exists(Template(r"分路重复.png", record_pos=(-0.001, -0.157), resolution=(2266, 1488))):
                 logger.warning("分路冲突，切换英雄")
@@ -314,11 +310,11 @@ def 启动游戏():
                     logger.warning("选择 英雄类型")
                     touch(Template(r"显示全部英雄.png", record_pos=(-0.291, -0.021), resolution=(2266, 1488)))
                 if exists(英雄属性["备战英雄线路"]):
-                    logger.warning("选择 备战英雄线路 {}".format(英雄属性["备战英雄线路"].filename))
+                    logger.warning("选择 备战英雄线路 {}".format(英雄属性["备战英雄线路"].filename.split(".")[0]))
                     touch(英雄属性["备战英雄线路"])
 
                 if exists(英雄属性["备战英雄"]):
-                    logger.warning("选择 备战英雄 {}".format(英雄属性["备战英雄"].filename))
+                    logger.warning("选择 备战英雄 {}".format(英雄属性["备战英雄"].filename.split(".")[0]))
                     touch(英雄属性["备战英雄"])
         else:
             logger.error("未找到 英雄")
@@ -338,6 +334,12 @@ def 启动王者荣耀():
     异常处理()
     if 大厅中() or 对战中():
         return
+    for i in range(10):
+        if exists(Template(r"返回.png", record_pos=(-0.444, -0.299), resolution=(2266, 1488))):
+            logger.warning("返回")
+            touch(Template(r"返回.png", record_pos=(-0.444, -0.299), resolution=(2266, 1488)))
+        else:
+            break
     start_app(设备信息["王者应用ID"])
     if exists(Template(r"软件更新.png", threshold=0.8, record_pos=(-0.365, 0.293), resolution=(2266, 1488))):
         logger.warning("软件更新")
@@ -359,7 +361,7 @@ def 启动王者荣耀():
             logger.warning("静音")
     except:
         logger.warning("静音失败")
-    btn_pos = wait(Template(r"开始游戏按钮.png", record_pos=(-0.003, 0.16), resolution=(2266, 1488)), interval=4, intervalfunc=异常处理)
+    btn_pos = wait(Template(r"开始游戏按钮.png", threshold=0.9, record_pos=(-0.003, 0.16), resolution=(2266, 1488)), interval=4, intervalfunc=异常处理)
     try:
         if btn_pos:
             touch(btn_pos, times=2)
@@ -378,6 +380,25 @@ def 对战中():
     if exists(Template(r"对战中.png", record_pos=(0.422, 0.245), resolution=(2266, 1488))):
         logger.warning("正在对战中")
         return True
+
+
+def 健康系统():
+    if exists(Template(r"健康系统.png", record_pos=(0.119, -0.099), resolution=(2266, 1488))):
+        logger.warning("您已禁赛")
+        touch(Template(r"确定1.png", record_pos=(0.201, 0.079), resolution=(2266, 1488)))
+        stop_app(设备信息["王者应用ID"])
+        # start_app(设备信息["王者应用ID"])
+        sleep(900)
+        启动王者荣耀()
+        raise Exception("您已禁赛")
+
+    if exists(Template(r"健康系统1.png", record_pos=(-0.158, -0.028), resolution=(2266, 1488))):
+        touch(Template(r"确定2.png", record_pos=(0.098, 0.119), resolution=(2266, 1488)))
+        stop_app(设备信息["王者应用ID"])
+        # start_app(设备信息["王者应用ID"])
+        sleep(900)
+        启动王者荣耀()
+        raise Exception("您已禁赛")
 
 
 def 游戏结束():
@@ -408,7 +429,7 @@ def 游戏结束():
 
 def handler2(signum, frame):
     logger.warning("关闭王者荣耀 {}".format(设备信息["链接"]))
-    # stop_app(设备信息["王者应用ID"])
+    stop_app(设备信息["王者应用ID"])
 
 
 def handler(signum, frame):
@@ -428,6 +449,8 @@ def 王者子进程(type, 设备类型, 设备IP地址):
     global 英雄属性
     global 设备信息
     global device
+    global 次数
+    global 次数2
     signal.signal(signal.SIGUSR1, handler2)
     if type:
         英雄属性 = {
@@ -456,9 +479,22 @@ def 王者子进程(type, 设备类型, 设备IP地址):
             "链接": format("{}:///{}:{}".format(设备类型, 设备IP地址, 8100)),
             "王者应用ID": "com.tencent.smoba"
         }
+    次数2 = 次数
+    atexit.register(重启游戏)
+    重启游戏()
 
+
+def 重启游戏():
+    logger.warning("重启游戏")
+    global 次数
+    global 次数2
+    global device
+
+    if 次数 <= 0:
+        return
     for k in range(次数):
-        logger.warning("第 {} 次运行程序".format(k + 1))
+        次数2 -= 1
+        logger.warning("第 {} 次运行子程序".format(次数 - 次数2))
         device = connect_device(设备信息["链接"])
         logger.warning("设备信息: {}".format(设备信息))
         启动王者荣耀()
@@ -474,7 +510,6 @@ if __name__ == '__main__':
     signal.signal(signal.SIGINT, handler)
     global process_list
     process_list = []
-
     if not 辅助:
         王者子进程(True, 设备类型, 设备IP地址)
         # 王者子进程(False, 辅助设备类型, 辅助设备IP地址)
